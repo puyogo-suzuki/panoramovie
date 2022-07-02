@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
+    <AndroidManifestApplicationPackageName>io.github.puyogosuzuki.panoramovie</AndroidManifestApplicationPackageName>
+    <AndroidManifestMinimumSdkVersion>21</AndroidManifestMinimumSdkVersion>
+    <AndroidManifestTargetSdkVersion>29</AndroidManifestTargetSdkVersion>
+    <AndroidSdkDirectory>C:\Users\kameg\AppData\Local\Android\Sdk</AndroidSdkDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="AndroidManifest.xml" />
+    <Compile Include="Gyro.fs" />
+    <Compile Include="Camera.fs" />
+    <Compile Include="MySurfaceView.fs" />
+    <Compile Include="MainActivity.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="6.0.5" />
+    <PackageReference Include="FSharp.Android.Resource" Version="1.0.4" />
+    <PackageReference Include="Xamarin.AndroidX.ConstraintLayout" Version="2.1.4.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="PanoraMovie.CSharp\PanoraMovie.CSharp.csproj" />
+  </ItemGroup>
+</Project>

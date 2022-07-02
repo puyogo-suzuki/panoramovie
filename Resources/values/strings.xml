@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Panora Movie</string>
+    <string name="start_record">Record</string>
+	<string name="stop_record">Stop</string>
+	<string name="gallery">Gallery</string>
+	<string name="close_app">Close Application</string>
+
+	<string name="error_error">Error</string>
+	<string name="error_camera_missing">There are no camera.</string>
+	<string name="error_camera_unavailable">The camera is unavailable.</string>
+	<string name="error_camera_permission">This app needs permission of camera.</string>
+	<string name="error_camera_illegalState">Illegal State!(Camera)</string>
+	<string name="error_camera_recordfailure">Recording Failed.</string>
+	<string name="error_gyro_missing">There are no gyroscope.</string>
+	<string name="error_gyro_unavailable">The gyroscope is unavailable.</string>
+	<string name="error_gyro_illegalState">Illegal State!(Gyro)</string>
+
+</resources>
