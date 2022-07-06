@@ -11,7 +11,8 @@
     <AndroidSdkDirectory>C:\Users\kameg\AppData\Local\Android\Sdk</AndroidSdkDirectory>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="AndroidManifest.xml" />
+	<None Include="AndroidManifest.xml" />
+	<Compile Include="GallaryActivitiy.fs" />
     <Compile Include="Gyro.fs" />
     <Compile Include="Camera.fs" />
     <Compile Include="MySurfaceView.fs" />

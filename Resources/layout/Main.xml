@@ -25,11 +25,11 @@
         android:elevation="1dp"
     />
     <Button
-        android:id="@+id/garalleyButton"
+        android:id="@+id/gallaryButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         
-        android:text="@string/gallery"
+        android:text="@string/gallary"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         android:elevation="1dp"

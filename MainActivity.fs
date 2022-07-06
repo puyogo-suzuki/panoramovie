@@ -80,6 +80,9 @@ type MainActivity () as self =
             StopCamera cameraController
             cameraControllerUpdate <| CameraFail CameraInvalidState
 
+    let gallaryButtonClicked (_ : EventArgs) : unit =
+        self.StartActivity(new Intent(self, typeof<GallaryActivity>))
+
     member this.initializeCamera () =
         initializeSem.Wait()
         if HasCameraPermission this.ApplicationContext then
@@ -120,6 +123,7 @@ type MainActivity () as self =
         this.SetContentView (Resource.Layout.Main)
         //preview.Id <- View.GenerateViewId()
         recordButton.Value.Click.Add recordButtonClicked
+        this.FindViewById<Button>(Resource.Id.gallaryButton).Click.Add gallaryButtonClicked
         ()
 
     override this.OnDestroy () =

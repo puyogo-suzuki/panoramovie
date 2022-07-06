@@ -3,7 +3,7 @@
     <string name="app_name">Panora Movie</string>
     <string name="start_record">Record</string>
 	<string name="stop_record">Stop</string>
-	<string name="gallery">Gallery</string>
+	<string name="gallary">Gallary</string>
 	<string name="close_app">Close Application</string>
 
 	<string name="error_error">Error</string>

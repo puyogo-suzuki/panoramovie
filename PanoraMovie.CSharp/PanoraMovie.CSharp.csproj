@@ -1,8 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0-android</TargetFramework>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <ItemGroup>
+    <!--<AndroidResource Update="Resources\layout\GallaryItem.xml">
+      <CustomToolNamespace>PanoraMovie.CSharp</CustomToolNamespace>
+    </AndroidResource>-->
+  </ItemGroup>
 </Project>
