@@ -9,14 +9,20 @@ open Android.Util
 open System.IO
 open System.Threading
 
+type GyroDirection =
+    | GyroDirectionLandscape  // X
+    | GyroDirectionPortrait   // Y
+
 type SensorMsg =
     | SensorMsgStart of string
     | SensorMsgSensorChanged of SensorEvent
+    | SensorMsgDirectionChanged of GyroDirection
     | SensorMsgStop
 
 let sensorMsgToString = function
     | SensorMsgStart _ -> "SensorMsgStart"
     | SensorMsgSensorChanged _ -> "SensorMsgSensorChanged"
+    | SensorMsgDirectionChanged _ -> "SensorMsgDirectionChanged"
     | SensorMsgStop -> "SensorMsgStop"
 
 type GyroFailReason =
@@ -29,10 +35,6 @@ type GyroController =
     | GyroFail of GyroFailReason
     | GyroStarted of (CSharp.SensorEventListener * CancellationTokenSource) * SensorMsg MailboxProcessor
     | GyroRecordingStarted of (CSharp.SensorEventListener * CancellationTokenSource) * SensorMsg MailboxProcessor
-
-type GyroDirection =
-    | GyroDirectionLandscape  // X
-    | GyroDirectionPortrait   // Y
 
 let GyroControllerToString = function
     | GyroNone -> "GyroNone"
@@ -53,28 +55,30 @@ let sensorChanged (getter : GyroControllerGet) (e: SensorEvent) : unit =
     | _ -> ()
 
 let writeThread (dir : GyroDirection) (inbox : SensorMsg MailboxProcessor) =
-    let rec loop (strm : Stream) =
+    let rec loop (dir : GyroDirection) (strm : Stream) =
         async {
             let! msg = inbox.Receive()
             match (strm, msg) with
             | (null, SensorMsgStart path) -> 
                 let strm = File.OpenWrite path
                 GyroData.writeHead strm
-                return! loop strm
-            | (null, _) -> return! loop  null
+                return! loop dir strm
+            | (null, _) -> return! loop dir null
             | (strm, SensorMsgStart path) -> 
                 strm.Close()
                 strm.Dispose()
-                return! File.OpenWrite path |> loop
+                return! File.OpenWrite path |> loop dir
             | (strm, SensorMsgSensorChanged e) ->
                 GyroData.writeValue strm e.Timestamp (GyroValuesGetter e.Values dir)
-                return! loop strm 
+                return! loop dir strm 
             | (strm, SensorMsgStop) ->
                 strm.Close()
                 strm.Dispose()
-                return! loop null
+                return! loop dir null
+            | (strm, SensorMsgDirectionChanged dir) ->
+                return! loop dir strm
         }
-    loop null
+    loop dir null
 
 let public GetSensorService (context : Context) : SensorManager =
     context.GetSystemService(Context.SensorService).JavaCast<SensorManager>()
@@ -114,3 +118,11 @@ let public StopGyroRecording (update : GyroControllerUpdate) (getter : GyroContr
         mail.Post SensorMsgStop
         update <| GyroStarted (misc, mail)
     | _ -> update <| GyroFail GyroInvalidState
+
+let public DirectionChanged (dir : Res.Orientation) (getter : GyroControllerGet) =
+    match getter () with
+    | GyroStarted (_, mail) ->
+        mail.Post <| SensorMsgDirectionChanged (if dir = Res.Orientation.Portrait then GyroDirectionPortrait else GyroDirectionLandscape)
+    | GyroRecordingStarted (_, mail) ->
+        mail.Post <| SensorMsgDirectionChanged (if dir = Res.Orientation.Portrait then GyroDirectionPortrait else GyroDirectionLandscape)
+    | _ -> ()

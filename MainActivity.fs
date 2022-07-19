@@ -15,7 +15,7 @@ open Android.Util
 open AndroidX.ConstraintLayout.Widget
 open System.Threading
 
-[<Activity (Label = "panoramovie", MainLauncher = true, Icon = "@mipmap/icon")>]
+[<Activity (Label = "panoramovie", MainLauncher = true, Icon = "@mipmap/icon", ConfigurationChanges = (PM.ConfigChanges.Orientation ||| PM.ConfigChanges.ScreenSize))>]
 type MainActivity () as self =
     inherit Activity ()
     let TAG = "PANORAMOVIE_MAINACTIVITY"
@@ -26,7 +26,9 @@ type MainActivity () as self =
     [<VolatileField>]
     let mutable initializeSem : SemaphoreSlim = new SemaphoreSlim(1)
     let mutable preview : MySurfaceView = null
+    let mainView : ConstraintLayout Lazy = lazy self.FindViewById<ConstraintLayout>(Resource.Id.mainView)
     let recordButton : Button Lazy = lazy self.FindViewById<Button>(Resource.Id.recordButton)
+    let gallaryButton : Button Lazy = lazy self.FindViewById<Button>(Resource.Id.gallaryButton)
     let cameraManager : CameraManager Lazy = lazy GetCameraService (self)
     let windowManager : IWindowManager Lazy = lazy self.GetSystemService(Context.WindowService).JavaCast<IWindowManager>()
 
@@ -94,11 +96,35 @@ type MainActivity () as self =
     member this.initializeGyro () =
         InitializeGyro (base.Resources.Configuration.Orientation) gyroControllerUpdate gyroControllerGetter (GetSensorService (this :> Context))
 
+    member this.setLayout () =
+        let cs = new ConstraintSet()
+        cs.Clone(self, Resource.Layout.Main)
+        if base.Resources.Configuration.Orientation = Res.Orientation.Portrait then
+            cs.Connect(recordButton.Value.Id, ConstraintSet.Bottom, ConstraintSet.ParentId, ConstraintSet.Bottom)
+            cs.Connect(recordButton.Value.Id, ConstraintSet.Left, ConstraintSet.ParentId, ConstraintSet.Left)
+            cs.Connect(recordButton.Value.Id, ConstraintSet.Right, ConstraintSet.ParentId, ConstraintSet.Right)
+            cs.Connect(gallaryButton.Value.Id, ConstraintSet.Bottom, ConstraintSet.ParentId, ConstraintSet.Bottom)
+            cs.Connect(gallaryButton.Value.Id, ConstraintSet.Right, ConstraintSet.ParentId, ConstraintSet.Right)
+        else
+            cs.Connect(recordButton.Value.Id, ConstraintSet.Bottom, ConstraintSet.ParentId, ConstraintSet.Bottom)
+            cs.Connect(recordButton.Value.Id, ConstraintSet.Top, ConstraintSet.ParentId, ConstraintSet.Top)
+            cs.Connect(recordButton.Value.Id, ConstraintSet.Right, ConstraintSet.ParentId, ConstraintSet.Right)
+            cs.Connect(gallaryButton.Value.Id, ConstraintSet.Top, ConstraintSet.ParentId, ConstraintSet.Top)
+            cs.Connect(gallaryButton.Value.Id, ConstraintSet.Right, ConstraintSet.ParentId, ConstraintSet.Right)
+        cs.ApplyTo(mainView.Value)
+        ()
+
     override this.OnRequestPermissionsResult (reqcode, perms, results) =
         if results |> Seq.exists(fun v -> int v <> int PM.Permission.Granted) then
             errorFinish Resource.String.error_error Resource.String.error_camera_permission
         else
             this.initializeCamera preview.Holder
+
+    override this.OnConfigurationChanged (newConf : Res.Configuration) =
+        base.OnConfigurationChanged(newConf)
+        DirectionChanged newConf.Orientation gyroControllerGetter
+        this.setLayout ()
+        ()
 
     override this.OnResume () =
         base.OnResume ()
@@ -122,7 +148,8 @@ type MainActivity () as self =
         // Set our view from the "main" layout resource
         this.SetContentView (Resource.Layout.Main)
         recordButton.Value.Click.Add recordButtonClicked
-        this.FindViewById<Button>(Resource.Id.gallaryButton).Click.Add gallaryButtonClicked
+        gallaryButton.Value.Click.Add gallaryButtonClicked
+        this.setLayout ()
         ()
 
     override this.OnDestroy () =
