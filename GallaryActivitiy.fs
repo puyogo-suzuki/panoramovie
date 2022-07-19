@@ -23,7 +23,8 @@ type GallaryActivity () as self =
         let directory = if Environment.ExternalStorageState = Environment.MediaMounted then self.GetExternalFilesDir(null).Path else self.FilesDir.Path
         let files = System.IO.Directory.GetFiles directory
         let filtered = files |> Seq.filter (fun a -> System.IO.Path.GetExtension a = ".mp4")
-        filtered |> Seq.toArray
+                             |> Seq.filter (fun a -> System.IO.Path.ChangeExtension(a, ".gyro") |> System.IO.File.Exists)
+        filtered |> Seq.map (fun s -> new Java.Lang.String(s)) |> Seq.toArray
 
     //override this.OnResume () =
     //    base.OnResume ()
@@ -38,6 +39,15 @@ type GallaryActivity () as self =
             iv.LayoutParameters <- new LinearLayout.LayoutParams(contentSize.Value / 2, contentSize.Value / 2)
         if isNull tv || isNull iv then null else new CSharp.GallaryAdapter.ViewHolder(tv, iv)
 
+    let onItemClick (parent : AdapterView) (v : View) (position : int) (id : int64) = 
+        let s = parent.GetItemAtPosition(position).JavaCast<Java.Lang.String>()
+        if isNull s then
+            ()
+        else
+            let i = new Intent(self, typeof<PlayerActivity>)
+            i.PutExtra("path", s.ToString()) |> ignore
+            self.StartActivity(i)
+
     override this.OnCreate (bundle) =
         base.OnCreate (bundle)
         // Set our view from the "gallary" layout resource
@@ -46,6 +56,7 @@ type GallaryActivity () as self =
         let gridView = this.FindViewById<GridView>(Resource.Id.gallaryView)
         let gridAdapter = new CSharp.GallaryAdapter(this, Resource.Layout.GallaryItem, getData(), viewHolderCreator)
         gridView.Adapter <- gridAdapter
+        gridView.OnItemClickListener <- new CSharp.ItemClickListener(onItemClick)
         ()
 
     //override this.OnDestroy () =

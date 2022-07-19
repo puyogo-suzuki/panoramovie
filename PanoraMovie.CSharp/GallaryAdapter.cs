@@ -10,25 +10,22 @@ using System.Threading.Tasks;
 
 namespace PanoraMovie.CSharp
 {
-    public class GallaryAdapter : ArrayAdapter<string>
+    public class GallaryAdapter : ArrayAdapter<Java.Lang.String>
     {
-		private Context context;
+		private Context context { get; init; }
 		private int layoutResourceId;
-		private IList<string> data;
         private Func<View, ViewHolder?> viewHolderGenerator;
 
-        public GallaryAdapter(Context context, int layoutResourceId, IList<string> data, Func<View, ViewHolder?> viewHolderGenerator): base(context, layoutResourceId, data) 
+        public GallaryAdapter(Context context, int layoutResourceId, IList<Java.Lang.String> data, Func<View, ViewHolder?> viewHolderGenerator): base(context, layoutResourceId, data) 
 		{ 
 			this.layoutResourceId = layoutResourceId;
 			this.context = context;
-			this.data = data;
 			this.viewHolderGenerator = viewHolderGenerator;
 		}
-		public GallaryAdapter(Context context, int layoutResourceId, string[] data, Func<View, ViewHolder?> viewHolderGenerator) : base(context, layoutResourceId, data)
+		public GallaryAdapter(Context context, int layoutResourceId, Java.Lang.String[] data, Func<View, ViewHolder?> viewHolderGenerator) : base(context, layoutResourceId, data)
 		{
 			this.layoutResourceId = layoutResourceId;
 			this.context = context;
-			this.data = data;
 			this.viewHolderGenerator = viewHolderGenerator;
 		}
 
@@ -57,7 +54,9 @@ namespace PanoraMovie.CSharp
 					holder = holder2;
 			}
 
-			string item = data[position];
+			Java.Lang.String? _item = this.GetItem(position);
+			if (_item == null) return null!;
+			string item = _item.ToString();
 			holder.ImageTitle.Text = System.IO.Path.GetFileName(item);
 			try
 			{

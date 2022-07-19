@@ -1,7 +1,5 @@
 ﻿module PanoraMovie.Gyro
 
-#nowarn "9"
-
 open Android.Content
 open AndroidX.Core.Content
 open Android
@@ -32,44 +30,45 @@ type GyroController =
     | GyroStarted of (CSharp.SensorEventListener * CancellationTokenSource) * SensorMsg MailboxProcessor
     | GyroRecordingStarted of (CSharp.SensorEventListener * CancellationTokenSource) * SensorMsg MailboxProcessor
 
+type GyroDirection =
+    | GyroDirectionLandscape  // X
+    | GyroDirectionPortrait   // Y
+
 let GyroControllerToString = function
     | GyroNone -> "GyroNone"
     | GyroFail _ -> "GyroFail"
     | GyroStarted _ -> "GyroStarted"
     | GyroRecordingStarted _ -> "GyroRecordingStarted"
 
+let GyroValuesGetter<'a> (v : System.Collections.Generic.IList<'a>) = function
+    | GyroDirectionLandscape -> v[0]
+    | GyroDirectionPortrait -> v[1]
+
 type GyroControllerUpdate = GyroController -> unit
 type GyroControllerGet = unit -> GyroController
 
-let conv<'A , 'B when 'A : unmanaged and 'B : unmanaged> (src : 'A nativeptr) : 'B nativeptr = NativeInterop.NativePtr.toVoidPtr src |> NativeInterop.NativePtr.ofVoidPtr<'B>
 let sensorChanged (getter : GyroControllerGet) (e: SensorEvent) : unit =
     match getter () with
     | GyroRecordingStarted (_, m) -> m.Post <| SensorMsgSensorChanged e
     | _ -> ()
 
-let writeThread (inbox : SensorMsg MailboxProcessor) =
-    let openStream (path : string) = File.OpenWrite(path)
-    let writeTo (sw : Stream) (e : SensorEvent) =
-        let mutable buf = NativeInterop.NativePtr.stackalloc<byte>(5)
-        NativeInterop.NativePtr.set (conv buf) 0 e.Timestamp
-        NativeInterop.NativePtr.set (conv buf) 2 e.Values[0]
-        NativeInterop.NativePtr.set (conv buf) 3 e.Values[1]
-        NativeInterop.NativePtr.set (conv buf) 4 e.Values[2]
-        sw.Write(System.ReadOnlySpan<byte>(NativeInterop.NativePtr.toVoidPtr buf, 5))
+let writeThread (dir : GyroDirection) (inbox : SensorMsg MailboxProcessor) =
     let rec loop (strm : Stream) =
         async {
             let! msg = inbox.Receive()
             match (strm, msg) with
             | (null, SensorMsgStart path) -> 
-                return! openStream path |> loop
-            | (null, _) -> return! loop null
+                let strm = File.OpenWrite path
+                GyroData.writeHead strm
+                return! loop strm
+            | (null, _) -> return! loop  null
             | (strm, SensorMsgStart path) -> 
                 strm.Close()
                 strm.Dispose()
-                return! openStream path |> loop
+                return! File.OpenWrite path |> loop
             | (strm, SensorMsgSensorChanged e) ->
-                writeTo strm e
-                return! loop strm
+                GyroData.writeValue strm e.Timestamp (GyroValuesGetter e.Values dir)
+                return! loop strm 
             | (strm, SensorMsgStop) ->
                 strm.Close()
                 strm.Dispose()
@@ -88,7 +87,7 @@ let public StopGyro : GyroController -> unit = function
         cancel.Cancel()
     | _ -> ()
 
-let public InitializeGyro (update : GyroControllerUpdate) (getter : GyroControllerGet) (senseManager : SensorManager) =
+let public InitializeGyro (dir : Res.Orientation) (update : GyroControllerUpdate) (getter : GyroControllerGet) (senseManager : SensorManager) =
     let gyro = senseManager.GetDefaultSensor(SensorType.Gyroscope)
     if isNull gyro then
         update <| GyroFail GyroNotFound
@@ -97,7 +96,8 @@ let public InitializeGyro (update : GyroControllerUpdate) (getter : GyroControll
         update <|
             if senseManager.RegisterListener(sel, gyro, SensorDelay.Normal) then
                 let canceller = new CancellationTokenSource()
-                GyroStarted ((sel, canceller), MailboxProcessor.Start(writeThread, canceller.Token))
+                let orien = if dir = Res.Orientation.Portrait then GyroDirectionPortrait else GyroDirectionLandscape
+                GyroStarted ((sel, canceller), MailboxProcessor.Start(writeThread orien, canceller.Token))
             else
                 GyroFail GyroUnavailable
 

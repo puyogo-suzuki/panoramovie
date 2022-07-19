@@ -12,10 +12,14 @@
   </PropertyGroup>
   <ItemGroup>
 	<None Include="AndroidManifest.xml" />
+	<Compile Include="Utils.fs" />
+	<Compile Include="GyroData.fs" />
+	<Compile Include="MySurfaceView.fs" />
+	<Compile Include="PanoraSeekBar.fs" />
+	<Compile Include="PlayerActivity.fs" />
 	<Compile Include="GallaryActivitiy.fs" />
     <Compile Include="Gyro.fs" />
     <Compile Include="Camera.fs" />
-    <Compile Include="MySurfaceView.fs" />
     <Compile Include="MainActivity.fs" />
   </ItemGroup>
   <ItemGroup>

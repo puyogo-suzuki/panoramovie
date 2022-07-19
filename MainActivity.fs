@@ -83,26 +83,26 @@ type MainActivity () as self =
     let gallaryButtonClicked (_ : EventArgs) : unit =
         self.StartActivity(new Intent(self, typeof<GallaryActivity>))
 
-    member this.initializeCamera () =
+    member this.initializeCamera (holder : ISurfaceHolder) =
         initializeSem.Wait()
         if HasCameraPermission this.ApplicationContext then
-            InitializeCamera cameraControllerUpdate cameraControllerGetter preview.Holder.Surface (this :> Context) cameraManager.Value
+            InitializeCamera cameraControllerUpdate cameraControllerGetter holder.Surface (this :> Context) cameraManager.Value
         else
             RequestCameraPermission this
         initializeSem.Release() |> ignore
 
     member this.initializeGyro () =
-        InitializeGyro gyroControllerUpdate gyroControllerGetter (GetSensorService (this :> Context))
+        InitializeGyro (base.Resources.Configuration.Orientation) gyroControllerUpdate gyroControllerGetter (GetSensorService (this :> Context))
 
     override this.OnRequestPermissionsResult (reqcode, perms, results) =
         if results |> Seq.exists(fun v -> int v <> int PM.Permission.Granted) then
             errorFinish Resource.String.error_error Resource.String.error_camera_permission
         else
-            this.initializeCamera ()
+            this.initializeCamera preview.Holder
 
     override this.OnResume () =
         base.OnResume ()
-        preview <- new MySurfaceView(self.initializeCamera, self :> Context)
+        preview <- new MySurfaceView(self.initializeCamera, (fun _ _ _ _ -> ()), self :> Context)
         this.FindViewById<ConstraintLayout>(Resource.Id.mainView).AddView(preview)
         this.initializeGyro ()
 
@@ -121,7 +121,6 @@ type MainActivity () as self =
         handler <- new Handler(this.MainLooper)
         // Set our view from the "main" layout resource
         this.SetContentView (Resource.Layout.Main)
-        //preview.Id <- View.GenerateViewId()
         recordButton.Value.Click.Add recordButtonClicked
         this.FindViewById<Button>(Resource.Id.gallaryButton).Click.Add gallaryButtonClicked
         ()
