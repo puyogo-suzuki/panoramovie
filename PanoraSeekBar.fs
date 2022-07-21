@@ -75,12 +75,6 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
             if not <| isNull canvas then
                 canvas.DrawColor(0, BlendMode.Clear)
                 painter.Color <- new Color(255, 255, 255, int (255.0f * alpha))
-                //if alpha < 1.0f then
-                //    painter.SetColorFilter(new ColorMatrixColorFilter (new ColorMatrix([|1f;0f;0f;0f;0f;  0f;1f;0f;0f;0f;  0f;0f;1f;0f;0f; 0f;0f;0f;alpha;0f|]))) |> ignore
-                //    canvas.DrawBitmap(bg, 0.0f, 0.0f, painter)
-                //    painter.SetColorFilter(null) |> ignore
-                //else
-                // ColorFilter使うとholder.LockCanvas ()が何故かnullになっていく
                 canvas.DrawBitmap(bg, 0.0f, 0.0f, painter)
                 painter.StrokeWidth <- 6.0f
 

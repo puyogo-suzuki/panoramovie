@@ -37,15 +37,15 @@ let public parseGyroFile (strm : Stream) =
     let starttime = (new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Local)).AddSeconds(BitConverter.ToDouble(head.Slice(4)))
     let mutable ret = GyroData (int32 ((len - 16L) / int64 sizeof<GyroSegment>), starttime)
     let v = fixed &ret.Values[0]
-    let nanostart = ret.Values[0].TimeStamp //BitConverter.ToInt64(head) : 長すぎっぽい
+    if strm.Read (new Span<byte>(v |> NativePtr.toVoidPtr, sizeof<GyroSegment> * ret.Values.Length)) <> (int32 len - 16) then
+        raise (new IOException())
     let alpha = 0.001
+    let nanostart = ret.Values[0].TimeStamp //BitConverter.ToInt64(head) : 長すぎっぽい
     let mapper (lasttime, omega, theta) (v: GyroSegment) =
         let time = v.TimeStamp - nanostart
         let newomega = (omega * alpha) + (float v.Value * (1.0 - alpha))
         let newtheta = theta + (newomega * (float (time - lasttime)) / 1000.0 / 1000.0 / 1000.0)
         (GyroSegment(time, float32 newtheta), (time, newomega, newtheta))
-    if strm.Read (new Span<byte>(v |> NativePtr.toVoidPtr, sizeof<GyroSegment> * ret.Values.Length)) <> (int32 len - 16) then
-        raise (new IOException())
     let (newvalues, _) = Array.mapFold mapper (0, 0.0, 0.0) ret.Values
     ret.Values <- newvalues
     ret
