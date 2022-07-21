@@ -14,7 +14,7 @@ type SeekingSeekbarAnimationState = SSASInvisible | SSASAppearing | SSASAppeared
 type PlayerActivity () as self =
     inherit Activity ()
     let TAG = "PANORAMOVIE_PLAYER"
-    let APPEARING_TIME = 800.0f
+    let APPEARING_TIME = 200.0f
     let mutable seekBar : Option<MySurfaceView * (GyroData.GyroData -> unit) * (float32 option -> float32 -> unit) * (float32 * float32 -> float32)> = None
     let mutable videoView : VideoView = null
     let mutable playPauseButton : Button = null
@@ -36,13 +36,13 @@ type PlayerActivity () as self =
         | SSASAppeared -> 1.0f
         | SSASAppearing -> 
             seekingElasped <- seekingElasped + diff
-            if seekingElasped <= int APPEARING_TIME then
+            if seekingElasped > int APPEARING_TIME then
                 seekingElasped <- int APPEARING_TIME
                 seekingStatus <- SSASAppeared
             (float32 seekingElasped) / APPEARING_TIME
         | SSASDisappearing -> 
             seekingElasped <- seekingElasped - diff
-            if seekingElasped >= 0 then
+            if seekingElasped < 0 then
                 seekingElasped <- 0
                 seekingStatus <- SSASInvisible
             (float32 seekingElasped) / APPEARING_TIME
