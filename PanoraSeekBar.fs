@@ -14,21 +14,20 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
     let mutable gyroData : Option<GyroData.GyroData> = None
     let mutable currentAlpha : float32 = 0.0f
     let mutable prevPos : float32 = 0.0f
+    let getXY (minV : float32) (maxV : float32) (firstTimeStamp : int64) (lastTimeStamp : int64) (width : int) (height : int) (gs : GyroData.GyroSegment) : (float32 * float32) =
+        let duration = lastTimeStamp - firstTimeStamp
+        let vDist = maxV - minV
+        let ts = (double (gs.TimeStamp - firstTimeStamp)) / double duration
+        let v = (gs.Value - minV) / vDist
+        let x = float width * ts
+        let y = float32 height * v
+        (float32 x, y)
     let doDraw (spos : float32 option) alpha : unit =
         currentAlpha <- alpha
         match (gyroData, size) with
         | (Some gd, Some (width, height)) ->
             let (minV, maxV) = Utils.Array.minMax (fun (gs : GyroData.GyroSegment) -> gs.Value) gd.Values
-            let vDist = maxV - minV
-            let lastTimeStamp = gd.Values[gd.Values.Length - 1].TimeStamp
-            let firstTimeStamp = gd.Values[0].TimeStamp
-            let duration = lastTimeStamp - firstTimeStamp
-            let getXY (gs : GyroData.GyroSegment) : (float32 * float32) =
-                let ts = (double (gs.TimeStamp - firstTimeStamp)) / double duration
-                let v = (gs.Value - minV) / vDist
-                let x = float width * ts
-                let y = float32 height * v
-                (float32 x, y)
+            let getXY = getXY minV maxV gd.Values[0].TimeStamp gd.Values[gd.Values.Length - 1].TimeStamp width height
             let cur = 
                 match spos with
                 | None -> prevPos
@@ -65,18 +64,9 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
         match (gyroData, size) with
         | (Some gd, Some (width, height)) ->
             let (minV, maxV) = Utils.Array.minMax (fun (gs : GyroData.GyroSegment) -> gs.Value) gd.Values
-            let vDist = maxV - minV
-            let lastTimeStamp = gd.Values[gd.Values.Length - 1].TimeStamp
-            let firstTimeStamp = gd.Values[0].TimeStamp
-            let duration = lastTimeStamp - firstTimeStamp
-            let getXY (gs : GyroData.GyroSegment) : (float32 * float32) =
-                let ts = (double (gs.TimeStamp - firstTimeStamp)) / double duration
-                let v = (gs.Value - minV) / vDist
-                let x = float width * ts
-                let y = float32 height * v
-                (float32 x, y)
             let xx = x * float32 width
             let yy = y * float32 height
+            let getXY = getXY minV maxV gd.Values[0].TimeStamp gd.Values[gd.Values.Length - 1].TimeStamp width height
             let mutable (px, py) = getXY gd.Values[0]
             points.Clear()
             for gs in gd.Values |> Seq.tail do
