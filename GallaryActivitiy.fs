@@ -1,4 +1,5 @@
 ﻿namespace PanoraMovie
+#nowarn "44"
 
 open System
 
@@ -12,6 +13,7 @@ open Android.Hardware.Camera2
 open Android.Util
 open AndroidX.ConstraintLayout.Widget
 open System.Threading
+open Android.Media
 
 [<Activity (Label = "Gallary", Icon = "@mipmap/icon")>]
 type GallaryActivity () as self =
@@ -32,12 +34,31 @@ type GallaryActivity () as self =
     //override this.OnStop () =
     //    base.OnStop ()
 
-    let viewHolderCreator (v : View) =
-        let tv = v.FindViewById<TextView>(Resource.Id.gallary_item_text)
-        let iv = v.FindViewById<ImageView>(Resource.Id.gallary_item_image)
-        if not <| isNull iv then
-            iv.LayoutParameters <- new LinearLayout.LayoutParams(contentSize.Value / 2, contentSize.Value / 2)
-        if isNull tv || isNull iv then null else new CSharp.GallaryAdapter.ViewHolder(tv, iv)
+    let viewGenerator (context : Activity) (this : CSharp.ListViewAdapter<Java.Lang.String>) (position : int) (convertView : View) (parent : ViewGroup) : View =
+        let getViews (v : View) =
+            let tv = v.FindViewById<TextView>(Resource.Id.gallary_item_text)
+            let iv = v.FindViewById<ImageView>(Resource.Id.gallary_item_image)
+            if not <| isNull iv then
+                iv.LayoutParameters <- new LinearLayout.LayoutParams(contentSize.Value / 2, contentSize.Value / 2)
+            (v, tv, iv)
+        let genViewHolder () = getViews <| context.LayoutInflater.Inflate(Resource.Layout.GallaryItem, parent, false)
+        let tryConvertView () =
+            try getViews convertView
+            with _ -> genViewHolder ()
+        let (ret, tv, iv) = if isNull convertView then genViewHolder() else tryConvertView()
+        let item = this.GetItem(position).ToString()
+        let createThumbnail () =
+            if OperatingSystem.IsAndroidVersionAtLeast 29 then
+                ThumbnailUtils.CreateVideoThumbnail(new Java.IO.File(item), new Android.Util.Size(128, 128), null)
+            else
+                ThumbnailUtils.CreateVideoThumbnail(item, Android.Provider.ThumbnailKind.MiniKind)
+        tv.Text <- System.IO.Path.GetFileName(item)
+        try
+            iv.ContentDescription <- System.IO.Path.GetFileName(item)
+            iv.SetImageBitmap (createThumbnail ())
+        with
+            _ -> ()
+        ret
 
     let onItemClick (parent : AdapterView) (v : View) (position : int) (id : int64) = 
         let s = parent.GetItemAtPosition(position).JavaCast<Java.Lang.String>()
@@ -48,15 +69,32 @@ type GallaryActivity () as self =
             i.PutExtra("path", s.ToString()) |> ignore
             self.StartActivity(i)
 
+    let onItemLongClick (parent : AdapterView) (v : View) (position : int) (id : int64) : bool = 
+        let s = parent.GetItemAtPosition(position).JavaCast<Java.Lang.String>()
+        if isNull s then
+            false
+        else
+            let i = new Intent(self, typeof<DetailActivity>)
+            i.PutExtra("path", s.ToString()) |> ignore
+            self.StartActivity(i)
+            true
+
+
+    override this.OnResume () =
+        base.OnResume ()
+        let gridView = this.FindViewById<GridView>(Resource.Id.gallaryView)
+        let gridAdapter = new CSharp.ListViewAdapter<Java.Lang.String>(self :> Context, Resource.Layout.GallaryItem, getData(), viewGenerator this)
+        gridView.Adapter <- gridAdapter
+        ()
+        
     override this.OnCreate (bundle) =
         base.OnCreate (bundle)
         // Set our view from the "gallary" layout resource
         this.SetContentView (Resource.Layout.Gallary)
         //preview.Id <- View.GenerateViewId()
         let gridView = this.FindViewById<GridView>(Resource.Id.gallaryView)
-        let gridAdapter = new CSharp.GallaryAdapter(this, Resource.Layout.GallaryItem, getData(), viewHolderCreator)
-        gridView.Adapter <- gridAdapter
         gridView.OnItemClickListener <- new CSharp.ItemClickListener(onItemClick)
+        gridView.OnItemLongClickListener <- new CSharp.ItemLongClickListener(onItemLongClick)
         ()
 
     //override this.OnDestroy () =

@@ -17,6 +17,7 @@
 	<Compile Include="MySurfaceView.fs" />
 	<Compile Include="PanoraSeekBar.fs" />
 	<Compile Include="PlayerActivity.fs" />
+	<Compile Include="DetailActivity.fs" />
 	<Compile Include="GallaryActivitiy.fs" />
     <Compile Include="Gyro.fs" />
     <Compile Include="Camera.fs" />
