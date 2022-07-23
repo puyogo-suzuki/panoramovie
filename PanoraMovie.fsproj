@@ -8,7 +8,7 @@
     <AndroidManifestApplicationPackageName>io.github.puyogosuzuki.panoramovie</AndroidManifestApplicationPackageName>
     <AndroidManifestMinimumSdkVersion>21</AndroidManifestMinimumSdkVersion>
     <AndroidManifestTargetSdkVersion>29</AndroidManifestTargetSdkVersion>
-    <AndroidSdkDirectory>C:\Users\kameg\AppData\Local\Android\Sdk</AndroidSdkDirectory>
+    <AndroidSdkDirectory>$(ANDROID_SDK)</AndroidSdkDirectory>
   </PropertyGroup>
   <ItemGroup>
 	<None Include="AndroidManifest.xml" />

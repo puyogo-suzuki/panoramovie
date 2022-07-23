@@ -8,16 +8,20 @@ open System
 open Android.Graphics
 open System.Threading.Tasks
 
-let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float32 option -> float32 -> unit) * (float32 * float32 -> float32) =
+/// <summary>シークバーを作る</summary>
+/// <params name="cont">アクティビティなどのコンテキストを渡す</params>
+/// <returns>(SurfaceView, ジャイロデータのsetter, 描画（引数は時間，透明度）, 方向でシークするときに選ばれる時間（引数はタップ座標）)</returns>
+let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float32 -> float32 -> unit) * (float32 * float32 -> float32) =
     let painter : Paint = new Paint()
     let mutable holder : ISurfaceHolder = null
+    // 表示領域の大きさ
     let mutable size : Option<int * int> = None
+    // ジャイロデータ
     let mutable gyroData : Option<GyroData.GyroData> = None
-    let mutable currentAlpha : float32 = 0.0f
-    let mutable prevPos : float32 = 0.0f
     let mutable (minV, maxV) = (0f, 0f)
     let mutable background : Option<Bitmap> = None
     let mutable backgroundTask : Task = Task.CompletedTask
+    // そのGyroSegmentの座標を求める
     let getXY (firstTimeStamp : int64) (lastTimeStamp : int64) (width : int) (height : int) (gs : GyroData.GyroSegment) : (float32 * float32) =
         let duration = lastTimeStamp - firstTimeStamp
         let vDist = maxV - minV
@@ -27,6 +31,7 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
         let y = float32 height * v
         (float32 x, y)
 
+    // GyroSegmentに対するforeach
     let forEachGyroSegment (width : int) (height : int) (gd : GyroData.GyroData) (f : float32 -> float32 -> float32 -> float32 -> unit) =
         let mutable (px, py) = getXY gd.Values[0].TimeStamp gd.Values[gd.Values.Length - 1].TimeStamp width height gd.Values[0]
         // Seq.foldでできるけど…
@@ -36,6 +41,7 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
             px <- x
             py <- y
 
+    // 背景キャッシュの生成
     let generateBackground () =
         match (gyroData, size) with
         | (Some gd, Some (width, height)) ->
@@ -45,7 +51,7 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
                     background <- None
                     if bmp.Width = width && bmp.Height = height then
                         bmp
-                    else
+                    else // リサイズが起きたとき
                         bmp.Dispose()
                         Bitmap.CreateBitmap(width, height, Bitmap.Config.Argb8888)
                 | None -> Bitmap.CreateBitmap(width, height, Bitmap.Config.Argb8888)
@@ -55,42 +61,37 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
             canvas.DrawColor(0, BlendMode.Clear)
             canvas.DrawColor(new Color(0, 0, 0, 128))
             painter.Color <- new Color(255, 255, 255)
-            painter.StrokeWidth <- 3.0f
+            painter.StrokeWidth <- 8.0f
             forEachGyroSegment width height gd (fun x y px py -> 
                 canvas.DrawLine(px, py, x, y, painter)
             )
             background <- Some bmp
         | _ -> ()
 
-    let doDraw (spos : float32 option) alpha : unit =
-        currentAlpha <- alpha
+    // 時間と透明度をもらって背景キャッシュと丸を描画する
+    let doDraw (t : float32) alpha : unit =
         match (backgroundTask.IsCompleted, gyroData, size, background) with
         | (true, Some gd, Some (width, height), Some bg) ->
-            let cur = 
-                match spos with
-                | None -> prevPos
-                | Some t -> t * float32 width
-                   
+            let cur = t * float32 width
             let canvas = holder.LockCanvas ()
             if not <| isNull canvas then
                 canvas.DrawColor(0, BlendMode.Clear)
                 painter.Color <- new Color(255, 255, 255, int (255.0f * alpha))
                 canvas.DrawBitmap(bg, 0.0f, 0.0f, painter)
-                painter.StrokeWidth <- 6.0f
 
                 forEachGyroSegment width height gd (fun x y px py -> 
                     if px <= cur && cur < x then // 入っていたら
                         let yy = py + (y - py) / (x - px) * (cur - px)
-                        canvas.DrawCircle(cur, yy, 12.0f, painter)
+                        canvas.DrawCircle(cur, yy, 24.0f, painter)
                 )
-                if cur >= 1.0f then
-                    canvas.DrawCircle(float32 width, float32 height, 3.0f, painter)
+                if cur >= float32 width then
+                    canvas.DrawCircle(float32 width, float32 height, 24.0f, painter)
 
                 holder.UnlockCanvasAndPost canvas
         | _ -> ()
 
     let points = new System.Collections.Generic.List<float32>()
-
+    // 方向によるシークの時，タッチ位置から時間を求める
     let seekByDirection (x, y) = 
         match (gyroData, size) with
         | (Some gd, Some (width, height)) ->
@@ -106,6 +107,7 @@ let make (cont : Context) : MySurfaceView * (GyroData.GyroData -> unit) * (float
             with
                 | _ -> 0.0f
         | _ -> x
+    // ジャイロデータのsetter
     let gyroSet (gd : GyroData.GyroData) =
         let minmaxV = Utils.Array.minMax (fun (gs : GyroData.GyroSegment) -> gs.Value) gd.Values
         minV <- fst minmaxV

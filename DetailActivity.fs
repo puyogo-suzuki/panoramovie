@@ -1,18 +1,11 @@
 ﻿namespace PanoraMovie
 
-open System
-
 open Android.App
 open Android.Content
-open Android.OS
-open Android.Runtime
 open Android.Views
 open Android.Widget
-open Android.Hardware.Camera2
-open Android.Util
-open AndroidX.ConstraintLayout.Widget
-open System.Threading
 
+/// <summary>動画の詳細情報を表示するアクティビティ</summary>
 [<Activity (Label = "Detail", Icon = "@mipmap/icon")>]
 type DetailActivity () =
     inherit Activity ()
@@ -33,12 +26,11 @@ type DetailActivity () =
         va.SetText(item.Value, TextView.BufferType.Normal)
         v
 
-
     override this.OnCreate (bundle) =
         base.OnCreate (bundle)
-        // Set our view from the "gallary" layout resource
         this.SetContentView (Resource.Layout.Detail)
         let path = this.Intent.GetStringExtra("path")
+        // Removeボタンを押されたときの処理
         let remove () =
             try
                 System.IO.File.Delete path
@@ -49,6 +41,7 @@ type DetailActivity () =
         let dlist = this.FindViewById<ListView> (Resource.Id.detailList)
         let rmBtn = this.FindViewById<Button>(Resource.Id.fileRemoveButton)
         Event.add (fun _ -> remove()) rmBtn.Click
+        // 動画情報の取得
         let mmr = new Android.Media.MediaMetadataRetriever()
         try
             mmr.SetDataSource(path)
@@ -59,6 +52,3 @@ type DetailActivity () =
         _ -> 
             Toast.MakeText(this :> Context, Resource.String.error_fail_load, ToastLength.Long).Show()
             this.Finish()
-
-    //override this.OnDestroy () =
-    //    base.OnDestroy ()

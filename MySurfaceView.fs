@@ -4,6 +4,7 @@ open Android.Content
 open Android.Util
 open Java.Interop
 
+/// <summary>SurfaceChangedとSurfaceCreatedの指定が可能なISurfaceHolderCallbackを実装したSurfaceViewの継承クラス</summary>
 [<AllowNullLiteral>]
 type MySurfaceView =
     inherit SurfaceView

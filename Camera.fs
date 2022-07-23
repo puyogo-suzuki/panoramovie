@@ -14,22 +14,38 @@ open Android.Util
 open Android.Hardware.Camera2.Params
 open PanoraMovie.CSharp
 
+/// <summary>カメラの失敗理由</summary>
 type CameraFailReason =
+    /// <summary>カメラが見つからなかった</summary>
     | CameraNotFound
+    /// <summary>カメラが切断された</summary>
     | CameraDisconnected
+    /// <summary>カメラが利用できなかった</summary>
     | CameraUnavailable
+    /// <summary>CameraControllerの状態が不正</summary>
     | CameraInvalidState
+    /// <summary>録画に失敗した</summary>
     | CameraRecordFailure
 
+/// <summary>カメラに関する構造体</summary>
 type CameraStruct = CameraStateListener * HandlerThread
+/// <summary>カメラの動画ストリームに関する構造体</summary>
 type SessionStruct = SessionStateListener * CameraDevice * CaptureRequest.Builder * SessionCaptureListener
+/// <summary>カメラの制御</summary>
 type CameraController =
+    /// <summary>カメラ未初期化</summary>
     | CameraNone
+    /// <summary>カメラ失敗</summary>
     | CameraFail of CameraFailReason
+    /// <summary>カメラの初期化中</summary>
     | CameraOpening of CameraStruct * Handler
+    /// <summary>カメラ初期化完了</summary>
     | CameraOpened of CameraStruct * Handler * SessionStruct
+    /// <summary>カメラプレビュー中</summary>
     | SessionStarted of CameraStruct * Handler * SessionStruct * CameraCaptureSession
+    /// <summary>動画記録の準備中</summary>
     | RecordingStarting of CameraStruct * Handler * SessionStruct * MediaRecorder
+    /// <summary>動画記録が始まった</summary>
     | RecordingStarted of CameraStruct * Handler * SessionStruct * MediaRecorder * CameraCaptureSession
 
 let public CameraControllerToString = function
@@ -99,7 +115,8 @@ let createCameraThread () : HandlerThread * Handler =
     th.Start ()
     let handle = new Handler(th.Looper)
     (th, handle)
-    
+ 
+/// <summary>CameraCaptureSession.StateCallbackのonSessionConfiguredに紐づけられます．カメラプレビューの初期化が完了したとき</summary>
 let sessionConfigured (update : CameraControllerUpdate) (getter : CameraControllerGetter) (session : CameraCaptureSession) =
     match getter () with
     | CameraOpened(cs, h, (sl, c, r, scl)) -> 
@@ -110,6 +127,7 @@ let sessionConfigured (update : CameraControllerUpdate) (getter : CameraControll
         update <| CameraController.RecordingStarted(cs, h, (sl, c, r, scl), mr, session)
     | _ -> update <| CameraFail CameraInvalidState
 
+/// <summary>CameraCaptureSession.StateCallbackのonSessionConfigureFailedに紐づけられる．カメラプレビューの失敗したとき</summary>
 let sessionConfigureFailed (update : CameraControllerUpdate) (getter : CameraControllerGetter) (session : CameraCaptureSession) =
     session.Close()
     StopCamera <| getter ()
@@ -120,6 +138,7 @@ let createCaptureRequest (camDev : CameraDevice) (surface : Surface) : CaptureRe
     captureRequest.AddTarget(surface)
     captureRequest
 
+/// <summary>CameraDevice.StateCallbackのonOpenedに紐づけられる．</summary>
 let cameraOpened (update : CameraControllerUpdate) (getter : CameraControllerGetter) (surface : Surface) (context : Context) (camDev : CameraDevice) =
     match getter () with
     | CameraOpening(cs, h) -> 
@@ -129,15 +148,24 @@ let cameraOpened (update : CameraControllerUpdate) (getter : CameraControllerGet
         camDev.CreateCaptureSession([|surface;|], sessionStateListener, h)
     | _ -> update <| CameraFail CameraInvalidState
 
+/// <summary>CameraDevice.StateCallbackのonDisconnectedに紐づけられる．</summary>
 let cameraDisconnected (update : CameraControllerUpdate) (camDev : CameraDevice) =
     camDev.Close ()
     update <| CameraFail CameraDisconnected
+
+/// <summary>CameraDevice.StateCallbackのonErrorに紐づけられる．</summary>
 let cameraError (update : CameraControllerUpdate) (camDev : CameraDevice) (err : CameraError) =
     update <| CameraFail CameraUnavailable
 
 let public GetCameraService (activity : Activity) : CameraManager =
     activity.GetSystemService(Context.CameraService).JavaCast<CameraManager>()
 
+/// <summary>カメラの初期化</summary>
+/// <params name="updater">CameraControllerのsetter</params>
+/// <params name="getter">CameraControllerのgetter</params>
+/// <params name="surface">プレビュー先のSurface</params>
+/// <params name="context">Context</params>
+/// <params name="cameraManager">CameraManagerのインスタンス</params>
 let public InitializeCamera (updater : CameraControllerUpdate) (getter : CameraControllerGetter) (surface : Surface) (context : Context) (cameraManager : CameraManager) : unit =
     if getter () = CameraNone then
         match cameraManager.GetCameraIdList () |> Seq.filter (isBackCamera cameraManager) |> Seq.tryHead with
@@ -153,6 +181,13 @@ let public InitializeCamera (updater : CameraControllerUpdate) (getter : CameraC
     else
         ()
 
+/// <summary>動画記録の開始</summray>
+/// <params name="updater">CameraControllerのsetter</params>
+/// <params name="getter">CameraControllerのgetter</params>
+/// <params name="surface">プレビュー先のSurface</params>
+/// <params name="orientation">スマホの向き</params>
+/// <params name="filePath">書き込み先のファイルパス</params>
+/// <params name="cameraManager">CameraManagerのインスタンス</params>
 let public StartVideoRecording (updater : CameraControllerUpdate) (getter : CameraControllerGetter) (surface : Surface) (orientation : SurfaceOrientation) (filePath : string) (cameraManager : CameraManager) : unit =
     match getter () with
     | SessionStarted(cs, h, (sl, c, r, scl), s) ->
@@ -190,6 +225,10 @@ let public StartVideoRecording (updater : CameraControllerUpdate) (getter : Came
         StopCamera cc
         updater <| CameraFail CameraInvalidState
 
+/// <summary>動画記録の停止</summray>
+/// <params name="updater">CameraControllerのsetter</params>
+/// <params name="getter">CameraControllerのgetter</params>
+/// <params name="surface">プレビュー先のSurface</params>
 let public StopVideoRecording (updater : CameraControllerUpdate) (getter : CameraControllerGetter) (surface : Surface) : unit =
     match getter () with
     | RecordingStarted(cs, h, (sl, c, r, scl), mr, s) ->

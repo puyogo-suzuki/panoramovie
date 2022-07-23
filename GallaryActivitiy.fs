@@ -9,30 +9,22 @@ open Android.OS
 open Android.Runtime
 open Android.Views
 open Android.Widget
-open Android.Hardware.Camera2
-open Android.Util
-open AndroidX.ConstraintLayout.Widget
-open System.Threading
 open Android.Media
 
+/// <summary>ギャラリーアクティビティ</summary>
 [<Activity (Label = "Gallary", Icon = "@mipmap/icon")>]
 type GallaryActivity () as self =
     inherit Activity ()
     let TAG = "PANORAMOVIE_GALLARY"
     let contentSize = lazy self.WindowManager.CurrentWindowMetrics.Bounds.Width()
 
+    /// <summary>mp4とgyroファイルのあるファイルパス（.mp4を含む）の一覧を求める
     let getData () =
         let directory = if Environment.ExternalStorageState = Environment.MediaMounted then self.GetExternalFilesDir(null).Path else self.FilesDir.Path
         let files = System.IO.Directory.GetFiles directory
         let filtered = files |> Seq.filter (fun a -> System.IO.Path.GetExtension a = ".mp4")
                              |> Seq.filter (fun a -> System.IO.Path.ChangeExtension(a, ".gyro") |> System.IO.File.Exists)
         filtered |> Seq.map (fun s -> new Java.Lang.String(s)) |> Seq.toArray
-
-    //override this.OnResume () =
-    //    base.OnResume ()
-
-    //override this.OnStop () =
-    //    base.OnStop ()
 
     let viewGenerator (context : Activity) (this : CSharp.ListViewAdapter<Java.Lang.String>) (position : int) (convertView : View) (parent : ViewGroup) : View =
         let getViews (v : View) =
@@ -60,6 +52,7 @@ type GallaryActivity () as self =
             _ -> ()
         ret
 
+    /// <summary>クリックされたときの処理であり，PlayerActivityを立ち上げる</summary>
     let onItemClick (parent : AdapterView) (v : View) (position : int) (id : int64) = 
         let s = parent.GetItemAtPosition(position).JavaCast<Java.Lang.String>()
         if isNull s then
@@ -69,6 +62,7 @@ type GallaryActivity () as self =
             i.PutExtra("path", s.ToString()) |> ignore
             self.StartActivity(i)
 
+    /// <summary>ロングタップされたときの処理であり，DetailActivityを立ち上げる</summary>
     let onItemLongClick (parent : AdapterView) (v : View) (position : int) (id : int64) : bool = 
         let s = parent.GetItemAtPosition(position).JavaCast<Java.Lang.String>()
         if isNull s then
@@ -82,6 +76,7 @@ type GallaryActivity () as self =
 
     override this.OnResume () =
         base.OnResume ()
+        // 他のアプリケーションやDetailActivityによって削除されている可能性があるため，ビューのアダプタを作り直す
         let gridView = this.FindViewById<GridView>(Resource.Id.gallaryView)
         let gridAdapter = new CSharp.ListViewAdapter<Java.Lang.String>(self :> Context, Resource.Layout.GallaryItem, getData(), viewGenerator this)
         gridView.Adapter <- gridAdapter
@@ -89,13 +84,8 @@ type GallaryActivity () as self =
         
     override this.OnCreate (bundle) =
         base.OnCreate (bundle)
-        // Set our view from the "gallary" layout resource
         this.SetContentView (Resource.Layout.Gallary)
-        //preview.Id <- View.GenerateViewId()
         let gridView = this.FindViewById<GridView>(Resource.Id.gallaryView)
         gridView.OnItemClickListener <- new CSharp.ItemClickListener(onItemClick)
         gridView.OnItemLongClickListener <- new CSharp.ItemLongClickListener(onItemLongClick)
         ()
-
-    //override this.OnDestroy () =
-    //    base.OnDestroy ()
